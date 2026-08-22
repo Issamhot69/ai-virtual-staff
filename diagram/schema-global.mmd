@@ -1,0 +1,24 @@
+flowchart LR
+    subgraph CREATION["Fonctionnement global"]
+        direction LR
+        C1["1. Créer"] --> C2["2. Personnaliser"] --> C3["3. Entraîner"] --> C4["4. Publier"] --> C5["5. Utiliser"] --> C6["6. Analyser"]
+    end
+
+    subgraph WIZARD["Création de l'assistant (6 étapes)"]
+        direction TB
+        W1["Avatar"] --> W2["Identité"] --> W3["Activité"] --> W4["Connaissances"] --> W5["Fonctions"] --> W6["Langues & lancement"]
+    end
+
+    subgraph RUNTIME["Interaction client"]
+        direction LR
+        R1["Client appelle/écrit"] --> R2["Assistant répond"] --> R3["Action automatique"] --> R4{"Complexe ?"}
+        R4 -- oui --> R5["Transfert humain"]
+        R4 -- non --> R6["Suivi & fidélisation"]
+    end
+
+    subgraph DATA["Tableau de bord"]
+        direction LR
+        D1["Appels/conversations"] --> D2["RDV & satisfaction"] --> D3["Sources & top questions"]
+    end
+
+    CREATION --> WIZARD --> RUNTIME --> DATA
