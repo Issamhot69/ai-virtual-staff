@@ -76,6 +76,32 @@ export default function Wizard() {
   });
   const [languages, setLanguages] = useState(["Français"]);
   const [published, setPublished] = useState(false);
+  const [persona, setPersona] = useState(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState(null);
+
+  const analyzeActivity = async () => {
+    setAnalyzing(true);
+    setAnalyzeError(null);
+    setPersona(null);
+    try {
+      const res = await fetch("/api/generate-persona", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activity }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAnalyzeError(data.error || "Erreur lors de l'analyse.");
+      } else {
+        setPersona(data.persona);
+      }
+    } catch (e) {
+      setAnalyzeError("Impossible de contacter le serveur.");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   const goNext = () => setStep((s) => Math.min(6, s + 1));
   const goBack = () => setStep((s) => Math.max(1, s - 1));
@@ -148,8 +174,36 @@ export default function Wizard() {
               <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, margin: "0 0 4px", color: "#F6EFDD" }}>3. Décrivez votre activité</h2>
               <p style={{ color: "#9C9689", fontSize: 13, marginBottom: 16 }}>Avec vos propres mots — l'IA en déduit rôle, objectifs et comportement.</p>
               <textarea value={activity} onChange={(e) => setActivity(e.target.value)} rows={6} style={{ width: "100%", background: "#0F0D08", border: `1px solid ${BORDER}`, borderRadius: 10, padding: 14, color: "#F6EFDD", fontSize: 13, lineHeight: 1.6, resize: "vertical" }} />
-              <button style={{ marginTop: 14, background: "linear-gradient(135deg,#E8C57A,#B8862E)", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 700, color: "#1A1508", fontSize: 13, cursor: "pointer" }}>Analyser avec l'IA +</button>
-              <div style={{ marginTop: 18, fontSize: 12.5, color: "#C9C2B2" }}>L'IA va comprendre et générer : rôle de l'assistant, objectifs principaux, tâches et responsabilités, ton et comportement adaptés.</div>
+              <button onClick={analyzeActivity} disabled={analyzing} style={{ marginTop: 14, background: "linear-gradient(135deg,#E8C57A,#B8862E)", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 700, color: "#1A1508", fontSize: 13, cursor: analyzing ? "default" : "pointer", opacity: analyzing ? 0.7 : 1 }}>
+                {analyzing ? "Analyse en cours..." : "Analyser avec l'IA +"}
+              </button>
+
+              {analyzeError && (
+                <div style={{ marginTop: 14, fontSize: 12.5, color: "#E8A0A0", border: "1px solid #4A2626", borderRadius: 8, padding: 12 }}>
+                  {analyzeError}
+                </div>
+              )}
+
+              {!persona && !analyzeError && (
+                <div style={{ marginTop: 18, fontSize: 12.5, color: "#C9C2B2" }}>L'IA va comprendre et générer : rôle de l'assistant, objectifs principaux, tâches et responsabilités, ton et comportement adaptés.</div>
+              )}
+
+              {persona && (
+                <div style={{ marginTop: 18, border: `1px solid ${GOLD}`, borderRadius: 10, padding: 16, background: "rgba(212,165,74,0.06)" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#F6EFDD", marginBottom: 6 }}>Rôle</div>
+                  <div style={{ fontSize: 12.5, color: "#C9C2B2", marginBottom: 14 }}>{persona.role}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#F6EFDD", marginBottom: 6 }}>Objectifs</div>
+                  <ul style={{ margin: "0 0 14px", paddingLeft: 18, fontSize: 12.5, color: "#C9C2B2" }}>
+                    {persona.objectifs?.map((o, i) => <li key={i}>{o}</li>)}
+                  </ul>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#F6EFDD", marginBottom: 6 }}>Tâches</div>
+                  <ul style={{ margin: "0 0 14px", paddingLeft: 18, fontSize: 12.5, color: "#C9C2B2" }}>
+                    {persona.taches?.map((t, i) => <li key={i}>{t}</li>)}
+                  </ul>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#F6EFDD", marginBottom: 6 }}>Ton</div>
+                  <div style={{ fontSize: 12.5, color: "#C9C2B2" }}>{persona.ton}</div>
+                </div>
+              )}
             </div>
           )}
 
