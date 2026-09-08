@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, ArrowLeft, Sparkles } from "lucide-react";
+import { Send, ArrowLeft, Sparkles, Volume2, VolumeX } from "lucide-react";
 
 const GOLD = "#D4A54A";
 const BG = "#0B0A08";
@@ -7,28 +7,84 @@ const PANEL = "#141209";
 const BORDER = "#262115";
 
 const PERSONAS = [
-  { name: "Yasmine", tag: "Amie à l'écoute", description: "Tu écoutes sans juger, tu poses des questions douces, tu es réconfortante et présente pour la personne, surtout le soir." },
-  { name: "Karim", tag: "Coach motivant", description: "Tu encourages la personne à avancer sur ses objectifs, tu es énergique, direct mais bienveillant, tu célèbres les petites victoires." },
-  { name: "Nadia", tag: "Professeure patiente", description: "Tu expliques les choses simplement, tu aimes qu'on te pose des questions, tu es curieuse et pédagogue." },
-  { name: "Sami", tag: "Confident calme", description: "Tu es posé, tu prends le temps, tu aides la personne à réfléchir à voix haute sans jamais la presser." },
+  { name: "Yasmine", tag: "Amie à l'écoute", photo: "https://randomuser.me/api/portraits/women/44.jpg", gender: "female", description: "Tu écoutes sans juger, tu poses des questions douces, tu es réconfortante et présente pour la personne, surtout le soir." },
+  { name: "Karim", tag: "Coach motivant", photo: "https://randomuser.me/api/portraits/men/32.jpg", gender: "male", description: "Tu encourages la personne à avancer sur ses objectifs, tu es énergique, direct mais bienveillant, tu célèbres les petites victoires." },
+  { name: "Nadia", tag: "Professeure patiente", photo: "https://randomuser.me/api/portraits/women/68.jpg", gender: "female", description: "Tu expliques les choses simplement, tu aimes qu'on te pose des questions, tu es curieuse et pédagogue." },
+  { name: "Sami", tag: "Confident calme", photo: "https://randomuser.me/api/portraits/men/76.jpg", gender: "male", description: "Tu es posé, tu prends le temps, tu aides la personne à réfléchir à voix haute sans jamais la presser." },
 ];
 
 function initials(name) { return name.slice(0, 2).toUpperCase(); }
+
+function Avatar({ persona, size = 46, fontSize = 15 }) {
+  const [failed, setFailed] = useState(false);
+  const dim = { width: size, height: size, borderRadius: "50%", flexShrink: 0 };
+  if (persona.photo && !failed) {
+    return (
+      <img
+        src={persona.photo}
+        alt={persona.name}
+        onError={() => setFailed(true)}
+        style={{ ...dim, objectFit: "cover", border: "2px solid #D4A54A" }}
+      />
+    );
+  }
+  return (
+    <div style={{ ...dim, background: "linear-gradient(135deg,#D4A54A,#8A6A28)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontWeight: 700, color: "#0B0A08", fontSize }}>
+      {initials(persona.name)}
+    </div>
+  );
+}
+
+// Pick the best available French voice, preferring one matching the persona's gender.
+function pickVoice(gender) {
+  const voices = window.speechSynthesis?.getVoices?.() || [];
+  const frVoices = voices.filter((v) => v.lang?.toLowerCase().startsWith("fr"));
+  const pool = frVoices.length ? frVoices : voices;
+  if (!pool.length) return null;
+  const femaleHints = ["female", "amelie", "audrey", "marie", "julie", "celine", "zira"];
+  const maleHints = ["male", "thomas", "nicolas", "daniel", "guillaume"];
+  const hints = gender === "female" ? femaleHints : maleHints;
+  const match = pool.find((v) => hints.some((h) => v.name.toLowerCase().includes(h)));
+  return match || pool[0];
+}
+
+function speak(text, gender) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = "fr-FR";
+  utter.rate = 1;
+  utter.pitch = gender === "female" ? 1.05 : 0.95;
+  const voice = pickVoice(gender);
+  if (voice) utter.voice = voice;
+  window.speechSynthesis.speak(utter);
+}
 
 export default function FriendAI() {
   const [persona, setPersona] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(true);
   const bottomRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  useEffect(() => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    }
+    return () => window.speechSynthesis?.cancel();
+  }, []);
+
   const startChat = (p) => {
     setPersona(p);
-    setMessages([{ role: "assistant", content: `Salut, je suis ${p.name}. ${p.tag.toLowerCase()} — de quoi as-tu envie de parler aujourd'hui ?` }]);
+    const greeting = `Salut, je suis ${p.name}. ${p.tag.toLowerCase()} — de quoi as-tu envie de parler aujourd'hui ?`;
+    setMessages([{ role: "assistant", content: greeting }]);
+    if (voiceOn) speak(greeting, p.gender);
   };
 
   const send = async () => {
@@ -47,6 +103,7 @@ export default function FriendAI() {
       const data = await res.json();
       if (res.ok) {
         setMessages([...newMessages, { role: "assistant", content: data.reply }]);
+        if (voiceOn) speak(data.reply, persona.gender);
       } else {
         setMessages([...newMessages, { role: "assistant", content: `⚠️ ${data.error || "Erreur"}` }]);
       }
@@ -55,6 +112,11 @@ export default function FriendAI() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleVoice = () => {
+    if (voiceOn) window.speechSynthesis?.cancel();
+    setVoiceOn(!voiceOn);
   };
 
   if (!persona) {
@@ -66,12 +128,12 @@ export default function FriendAI() {
             <span style={{ letterSpacing: 2, fontSize: 12, color: GOLD, fontWeight: 600 }}>FRIEND AI</span>
           </div>
           <h1 style={{ fontFamily: "Georgia, serif", fontSize: 28, margin: "4px 0 6px", color: "#F6EFDD" }}>Choisissez votre compagnon</h1>
-          <p style={{ color: "#9C9689", fontSize: 14, marginBottom: 28 }}>Chaque compagnon a sa propre personnalité. Vous pourrez en changer à tout moment.</p>
+          <p style={{ color: "#9C9689", fontSize: 14, marginBottom: 28 }}>Chaque compagnon a sa propre personnalité et sa propre voix. Vous pourrez en changer à tout moment.</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
             {PERSONAS.map((p) => (
               <div key={p.name} onClick={() => startChat(p)} style={{ background: PANEL, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 18, cursor: "pointer" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-                  <div style={{ width: 46, height: 46, borderRadius: "50%", background: "linear-gradient(135deg,#D4A54A,#8A6A28)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontWeight: 700, color: "#0B0A08" }}>{initials(p.name)}</div>
+                  <Avatar persona={p} size={46} />
                   <div>
                     <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: "#F6EFDD" }}>{p.name}</div>
                     <div style={{ fontSize: 11.5, color: GOLD }}>{p.tag}</div>
@@ -89,21 +151,25 @@ export default function FriendAI() {
   return (
     <div style={{ background: BG, minHeight: "100vh", fontFamily: "Inter, ui-sans-serif, system-ui", color: "#EDE7D9", display: "flex", flexDirection: "column" }}>
       <div style={{ borderBottom: `1px solid ${BORDER}`, padding: "16px 20px", display: "flex", alignItems: "center", gap: 12 }}>
-        <button onClick={() => setPersona(null)} style={{ background: "transparent", border: "none", color: "#9C9689", cursor: "pointer", display: "flex", alignItems: "center" }}>
+        <button onClick={() => { window.speechSynthesis?.cancel(); setPersona(null); }} style={{ background: "transparent", border: "none", color: "#9C9689", cursor: "pointer", display: "flex", alignItems: "center" }}>
           <ArrowLeft size={18} />
         </button>
-        <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg,#D4A54A,#8A6A28)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontWeight: 700, color: "#0B0A08", fontSize: 13 }}>{initials(persona.name)}</div>
-        <div>
+        <Avatar persona={persona} size={36} fontSize={13} />
+        <div style={{ flex: 1 }}>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: "#F6EFDD" }}>{persona.name}</div>
           <div style={{ fontSize: 10.5, color: GOLD }}>{persona.tag}</div>
         </div>
+        <button onClick={toggleVoice} title={voiceOn ? "Couper la voix" : "Activer la voix"} style={{ background: "transparent", border: `1px solid ${BORDER}`, borderRadius: 8, padding: 8, color: voiceOn ? GOLD : "#9C9689", cursor: "pointer", display: "flex" }}>
+          {voiceOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+        </button>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px", maxWidth: 720, width: "100%", margin: "0 auto" }}>
         {messages.map((m, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", marginBottom: 14 }}>
+          <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", marginBottom: 14, gap: 8 }}>
+            {m.role === "assistant" && <Avatar persona={persona} size={28} fontSize={10} />}
             <div style={{
-              maxWidth: "75%", padding: "10px 14px", borderRadius: 14, fontSize: 14, lineHeight: 1.5,
+              maxWidth: "70%", padding: "10px 14px", borderRadius: 14, fontSize: 14, lineHeight: 1.5,
               background: m.role === "user" ? "linear-gradient(135deg,#E8C57A,#B8862E)" : PANEL,
               color: m.role === "user" ? "#1A1508" : "#EDE7D9",
               border: m.role === "user" ? "none" : `1px solid ${BORDER}`,
@@ -113,7 +179,8 @@ export default function FriendAI() {
           </div>
         ))}
         {loading && (
-          <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 14, gap: 8 }}>
+            <Avatar persona={persona} size={28} fontSize={10} />
             <div style={{ padding: "10px 14px", borderRadius: 14, background: PANEL, border: `1px solid ${BORDER}`, fontSize: 13, color: "#9C9689" }}>
               {persona.name} écrit...
             </div>
