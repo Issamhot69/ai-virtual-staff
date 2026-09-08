@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Wizard from "./Wizard.jsx";
 import Landing from "./Landing.jsx";
+import FriendAI from "./FriendAI.jsx";
 
 export default function App() {
   const [view, setView] = useState("landing");
@@ -10,8 +11,11 @@ export default function App() {
       <div style={{ position: "fixed", top: 12, right: 12, zIndex: 10, display: "flex", gap: 8 }}>
         <button onClick={() => setView("landing")} style={navBtn(view === "landing")}>Landing</button>
         <button onClick={() => setView("wizard")} style={navBtn(view === "wizard")}>Wizard</button>
+        <button onClick={() => setView("friend")} style={navBtn(view === "friend")}>Friend AI</button>
       </div>
-      {view === "landing" ? <Landing onStart={() => setView("wizard")} /> : <Wizard />}
+      {view === "landing" && <Landing onStart={() => setView("wizard")} />}
+      {view === "wizard" && <Wizard />}
+      {view === "friend" && <FriendAI />}
     </div>
   );
 }
