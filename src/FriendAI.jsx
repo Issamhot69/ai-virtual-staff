@@ -26,17 +26,13 @@ function useAnimationStyles() {
         50% { transform: scale(1.02); }
       }
       @keyframes fa-blink {
-        0%, 92%, 100% { transform: scaleY(1); }
-        95% { transform: scaleY(0.05); }
+        0%, 90%, 100% { opacity: 0; transform: scaleY(1); }
+        95% { opacity: 0.85; transform: scaleY(0.15); }
       }
       @keyframes fa-mouth-talk {
-        0%, 100% { transform: scaleY(0.35); }
-        25% { transform: scaleY(1); }
-        50% { transform: scaleY(0.5); }
-        75% { transform: scaleY(0.85); }
-      }
-      @keyframes fa-mouth-idle {
-        0%, 100% { transform: scaleY(0.15); }
+        0%, 100% { transform: scaleY(0.3); }
+        30% { transform: scaleY(1); }
+        60% { transform: scaleY(0.55); }
       }
     `;
     document.head.appendChild(style);
@@ -55,13 +51,13 @@ function LivingAvatar({ persona, size = 120, speaking = false }) {
     );
   }
 
-  const eyeY = size * 0.42;
-  const eyeSpacing = size * 0.16;
-  const eyeW = size * 0.1;
-  const eyeH = size * 0.045;
-  const mouthY = size * 0.68;
-  const mouthW = size * 0.16;
-  const mouthH = size * 0.05;
+  const eyeY = size * 0.4;
+  const eyeSpacing = size * 0.15;
+  const eyeW = size * 0.09;
+  const eyeH = size * 0.035;
+  const mouthY = size * 0.7;
+  const mouthW = size * 0.14;
+  const mouthH = size * 0.035;
 
   return (
     <div style={{ position: "relative", width: size, height: size, animation: "fa-breathe 3.4s ease-in-out infinite" }}>
@@ -81,7 +77,8 @@ function LivingAvatar({ persona, size = 120, speaking = false }) {
             width: eyeW,
             height: eyeH,
             borderRadius: eyeH,
-            background: "rgba(10,8,4,0.55)",
+            background: "rgba(15,10,5,0.9)",
+            opacity: 0,
             animation: "fa-blink 4.5s ease-in-out infinite",
             animationDelay: side === 1 ? "0.05s" : "0s",
             transformOrigin: "center",
@@ -97,10 +94,13 @@ function LivingAvatar({ persona, size = 120, speaking = false }) {
           width: mouthW,
           height: mouthH,
           borderRadius: "40%",
-          background: "rgba(60,20,20,0.55)",
-          animation: speaking ? "fa-mouth-talk 0.42s ease-in-out infinite" : "fa-mouth-idle 1s linear infinite",
+          background: "rgba(50,15,15,0.65)",
+          opacity: speaking ? 1 : 0,
+          animation: speaking ? "fa-mouth-talk 0.4s ease-in-out infinite" : "none",
+          transform: speaking ? undefined : "scaleY(0)",
           transformOrigin: "center",
           pointerEvents: "none",
+          transition: "opacity 0.15s ease",
         }}
       />
     </div>
